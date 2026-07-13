@@ -11,12 +11,14 @@ const LANGUAGE_CONFIG = {
     needsCompile: true,
   },
   java: {
-    image: 'eclipse-temurin:17-jdk-alpine', // Using eclipse-temurin alpine for faster startup and reliability
+    image: 'eclipse-temurin:17-jdk-alpine',
     compileCmd: (srcPath) => `javac ${srcPath}`,
     runCmd: () => `java -cp /sandbox Main`,
-    sourceFile: 'Main.java', // Must match the public class name 'Main'
+    sourceFile: 'Main.java',
     needsCompile: true,
   },
+
+
   python: {
     image: 'python:3.10-slim',
     compileCmd: null,
