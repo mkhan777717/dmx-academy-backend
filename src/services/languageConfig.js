@@ -11,7 +11,7 @@ const LANGUAGE_CONFIG = {
     needsCompile: true,
   },
   java: {
-    image: 'openjdk:17-slim', // Using openjdk slim for faster startup
+    image: 'eclipse-temurin:17-jdk-alpine', // Using eclipse-temurin alpine for faster startup and reliability
     compileCmd: (srcPath) => `javac ${srcPath}`,
     runCmd: () => `java -cp /sandbox Main`,
     sourceFile: 'Main.java', // Must match the public class name 'Main'
