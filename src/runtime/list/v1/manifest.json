@@ -1,0 +1,9 @@
+{
+  "name": "list",
+  "version": "v1",
+  "files": {
+    "cpp": "cpp/list.hpp",
+    "python": "python/list.py",
+    "javascript": "javascript/list.js"
+  }
+}

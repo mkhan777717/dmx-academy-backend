@@ -1,0 +1,8 @@
+{
+  "id": "float",
+  "version": "1.0",
+  "supports": [
+    "FUNCTIONAL"
+  ],
+  "description": "Floating point delta tolerance comparison"
+}

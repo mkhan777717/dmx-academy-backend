@@ -1,0 +1,34 @@
+{
+  "name": "ARRAY_INT",
+  "category": "collection",
+  "languages": {
+    "cpp": {
+      "typeName": "vector<int>",
+      "library": "list/v1/cpp/list.hpp",
+      "deserialize": "parseVectorInt({varName})",
+      "serialize": "serializeVectorInt({varName})"
+    },
+    "python": {
+      "typeName": "list[int]",
+      "deserialize": "json.loads({varName}.strip())",
+      "serialize": "json.dumps({varName})"
+    },
+    "javascript": {
+      "typeName": "number[]",
+      "deserialize": "JSON.parse({varName})",
+      "serialize": "JSON.stringify({varName})"
+    },
+    "java": {
+      "typeName": "int[]",
+      "library": "list/v1/java/DS.java",
+      "deserialize": "parseVectorInt({varName})",
+      "serialize": "serializeVectorInt({varName})"
+    },
+    "go": {
+      "typeName": "[]int",
+      "library": "list/v1/go/ds.go",
+      "deserialize": "parseVectorInt({varName})",
+      "serialize": "serializeVectorInt({varName})"
+    }
+  }
+}

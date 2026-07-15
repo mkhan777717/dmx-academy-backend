@@ -1,0 +1,8 @@
+{
+  "id": "token",
+  "version": "1.0",
+  "supports": [
+    "FUNCTIONAL"
+  ],
+  "description": "Token-by-token comparison ignoring extra whitespaces and newlines"
+}

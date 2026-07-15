@@ -1,0 +1,25 @@
+{
+  "name": "ListNode",
+  "category": "object",
+  "languages": {
+    "cpp": {
+      "typeName": "ListNode*",
+      "library": "list/v1/cpp/list.hpp",
+      "deserialize": "deserializeList({varName})",
+      "serialize": "serializeList({varName})",
+      "cleanup": "freeList({varName})"
+    },
+    "python": {
+      "typeName": "Optional[ListNode]",
+      "library": "list/v1/python/list.py",
+      "deserialize": "ListNode.deserialize(json.loads({varName}))",
+      "serialize": "ListNode.serialize({varName})"
+    },
+    "javascript": {
+      "typeName": "ListNode",
+      "library": "list/v1/javascript/list.js",
+      "deserialize": "ListNode.deserialize({varName})",
+      "serialize": "ListNode.serialize({varName})"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "interactive",
+  "version": "1.0",
+  "supports": [
+    "INTERACTIVE"
+  ],
+  "description": "Orchestrates interactive guessers and query execution loops (Placeholder)"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "GraphNode",
+  "category": "object",
+  "languages": {
+    "cpp": {
+      "typeName": "Node*",
+      "library": "graph/v1/cpp/graph.hpp",
+      "deserialize": "deserializeGraph({varName})",
+      "serialize": "serializeGraph({varName})",
+      "cleanup": "freeGraph({varName})"
+    },
+    "python": {
+      "typeName": "Node",
+      "library": "graph/v1/python/graph.py",
+      "deserialize": "Node.deserialize(json.loads({varName}))",
+      "serialize": "Node.serialize({varName})"
+    },
+    "javascript": {
+      "typeName": "Node",
+      "library": "graph/v1/javascript/graph.js",
+      "deserialize": "Node.deserialize({varName})",
+      "serialize": "Node.serialize({varName})"
+    }
+  }
+}

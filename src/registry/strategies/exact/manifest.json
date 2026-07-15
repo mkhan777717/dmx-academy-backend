@@ -1,0 +1,9 @@
+{
+  "id": "exact",
+  "version": "1.0",
+  "supports": [
+    "FUNCTIONAL",
+    "CLASS_DESIGN"
+  ],
+  "description": "Strict output comparison"
+}

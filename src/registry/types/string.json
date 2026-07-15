@@ -1,0 +1,31 @@
+{
+  "name": "STRING",
+  "category": "primitive",
+  "languages": {
+    "cpp": {
+      "typeName": "string",
+      "deserialize": "{varName}",
+      "serialize": "{varName}"
+    },
+    "python": {
+      "typeName": "str",
+      "deserialize": "{varName}.strip().strip('\"')",
+      "serialize": "{varName}"
+    },
+    "javascript": {
+      "typeName": "string",
+      "deserialize": "{varName}.replace(/^\"(.*)\"$/, '$1')",
+      "serialize": "{varName}"
+    },
+    "java": {
+      "typeName": "String",
+      "deserialize": "{varName}.trim().replace(\"\\\"\", \"\")",
+      "serialize": "{varName}"
+    },
+    "go": {
+      "typeName": "string",
+      "deserialize": "strings.Trim(strings.TrimSpace({varName}), \"\\\"\")",
+      "serialize": "{varName}"
+    }
+  }
+}
