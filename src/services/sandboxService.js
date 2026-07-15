@@ -195,6 +195,20 @@ const runInSandbox = async (language, code, problemConfig, testCases, options = 
   const memoryLimitMb = problemConfig.memoryLimit || 256;
   const runAll = !!options.runAll;
 
+  // Calculate dynamic timeout to account for VPS environment overhead (Docker container spawn or JVM startup)
+  let adjustedTimeoutMs = timeoutMs;
+  if (useDocker) {
+    adjustedTimeoutMs += 5000; // 5 seconds Docker container startup buffer
+  } else {
+    // Local execution startup buffer
+    const l = langKey.toUpperCase();
+    if (['JAVA', 'KOTLIN', 'SCALA'].includes(l)) {
+      adjustedTimeoutMs += 5000; // 5 seconds JVM startup buffer
+    } else if (['CSHARP', 'TYPESCRIPT', 'SWIFT'].includes(l)) {
+      adjustedTimeoutMs += 3000; // 3 seconds compilation/script startup buffer
+    }
+  }
+
   try {
     // 1. Write the source code
     const srcFile = config.sourceFile;
@@ -305,7 +319,7 @@ const runInSandbox = async (language, code, problemConfig, testCases, options = 
           'sh', '-c', runCmd
         ];
 
-        runRes = await runProcess('docker', dockerArgs, tc.input, timeoutMs, containerName);
+        runRes = await runProcess('docker', dockerArgs, tc.input, adjustedTimeoutMs, containerName);
       } else {
         // Local execution fallback
         let localCmd = '';
@@ -369,7 +383,7 @@ const runInSandbox = async (language, code, problemConfig, testCases, options = 
           localArgs = [path.join(tempDir, srcFile)];
         }
 
-        runRes = await runProcess(localCmd, localArgs, tc.input, timeoutMs);
+        runRes = await runProcess(localCmd, localArgs, tc.input, adjustedTimeoutMs);
       }
 
       // Check results
