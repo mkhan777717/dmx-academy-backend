@@ -14,8 +14,8 @@ const LANGUAGE_CONFIG = {
   java: {
     image: 'eclipse-temurin:17-jdk-alpine',
     compileCmd: (srcPath) => `javac ${srcPath}`,
-    runCmd: () => `java -cp /sandbox Solution`,
-    sourceFile: 'Solution.java',
+    runCmd: () => `java -cp /sandbox Main`,
+    sourceFile: 'Main.java',
     needsCompile: true,
   },
   python: {
