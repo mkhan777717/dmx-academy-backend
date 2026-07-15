@@ -1,0 +1,8 @@
+{
+  "id": "tree",
+  "version": "1.0",
+  "supports": [
+    "FUNCTIONAL"
+  ],
+  "description": "Compares binary trees for structural equivalence"
+}

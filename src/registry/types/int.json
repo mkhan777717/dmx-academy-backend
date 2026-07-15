@@ -1,0 +1,31 @@
+{
+  "name": "INT",
+  "category": "primitive",
+  "languages": {
+    "cpp": {
+      "typeName": "int",
+      "deserialize": "stoi({varName})",
+      "serialize": "to_string({varName})"
+    },
+    "python": {
+      "typeName": "int",
+      "deserialize": "int({varName}.strip())",
+      "serialize": "str({varName})"
+    },
+    "javascript": {
+      "typeName": "number",
+      "deserialize": "parseInt({varName}, 10)",
+      "serialize": "String({varName})"
+    },
+    "java": {
+      "typeName": "int",
+      "deserialize": "Integer.parseInt({varName}.trim())",
+      "serialize": "String.valueOf({varName})"
+    },
+    "go": {
+      "typeName": "int",
+      "deserialize": "func() int { val, _ := strconv.Atoi(strings.TrimSpace({varName})); return val }()",
+      "serialize": "strconv.Itoa({varName})"
+    }
+  }
+}

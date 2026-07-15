@@ -1,0 +1,25 @@
+{
+  "name": "TreeNode",
+  "category": "object",
+  "languages": {
+    "cpp": {
+      "typeName": "TreeNode*",
+      "library": "tree/v1/cpp/tree.hpp",
+      "deserialize": "deserializeTree({varName})",
+      "serialize": "serializeTree({varName})",
+      "cleanup": "freeTree({varName})"
+    },
+    "python": {
+      "typeName": "Optional[TreeNode]",
+      "library": "tree/v1/python/tree.py",
+      "deserialize": "TreeNode.deserialize(json.loads({varName}))",
+      "serialize": "TreeNode.serialize({varName})"
+    },
+    "javascript": {
+      "typeName": "TreeNode",
+      "library": "tree/v1/javascript/tree.js",
+      "deserialize": "TreeNode.deserialize({varName})",
+      "serialize": "TreeNode.serialize({varName})"
+    }
+  }
+}

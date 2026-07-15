@@ -1,188 +1,374 @@
 const prisma = require('../prisma');
-const { judgeQueuedSubmission } = require('./judgeService');
+const problemLoader = require('./problemLoader');
+const testcaseLoader = require('./testcaseLoader');
+const assemblyEngine = require('./assemblyEngine');
+const backendRegistry = require('./execution/backends/backendRegistry');
+const judgeStrategyRegistry = require('./judgeStrategyRegistry');
+const verdictService = require('./verdictService');
+const scoreCalculator = require('./scoreCalculator');
+const resultFormatter = require('./resultFormatter');
 const { broadcastLiveSubmission, broadcastLeaderboardUpdate } = require('./socketService');
 
+// State transition definitions
+const ALLOWED_TRANSITIONS = {
+  'PENDING': ['ASSEMBLING', 'FAILED'],
+  'ASSEMBLING': ['COMPILING', 'FAILED'],
+  'COMPILING': ['RUNNING', 'FAILED'],
+  'RUNNING': ['JUDGING', 'COMPLETED', 'FAILED'],
+  'JUDGING': ['RUNNING', 'COMPLETED', 'FAILED']
+};
+
+class PipelineHooks {
+  constructor() {
+    this.hooks = {
+      beforeCompile: [],
+      afterCompile: [],
+      beforeExecution: [],
+      afterExecution: [],
+      beforeJudge: [],
+      afterJudge: [],
+      beforePersist: [],
+      afterPersist: []
+    };
+  }
+
+  register(hookName, callback) {
+    if (this.hooks[hookName]) {
+      this.hooks[hookName].push(callback);
+    }
+  }
+
+  async trigger(hookName, context) {
+    if (this.hooks[hookName]) {
+      for (const cb of this.hooks[hookName]) {
+        try {
+          await cb(context);
+        } catch (e) {
+          console.error(`Hook error in ${hookName}:`, e);
+        }
+      }
+    }
+  }
+}
+
 /**
- * Submits user code, triggers execution against test cases, and stores the results
- * @param {Object} data - Submission info
- * @param {number} data.userId
- * @param {number} data.problemId
- * @param {string} data.language
- * @param {string} data.code
- * @param {boolean} data.runAll
+ * Normalizes language inputs matching Prisma schema enums.
  */
-const submitUserCode = async ({ userId, problemId, language, code, runAll = false }) => {
-  // 1. Fetch problem and testcases
-  const problem = await prisma.problem.findUnique({
-    where: { id: problemId },
-    include: { testCases: true },
-  });
+function normalizeDbLanguage(language) {
+  const lang = language.toUpperCase();
+  if (lang === 'JAVA') return 'JAVA';
+  if (lang === 'PYTHON') return 'PYTHON';
+  if (lang === 'JAVASCRIPT' || lang === 'TYPESCRIPT') return 'JAVASCRIPT';
+  if (lang === 'GO') return 'GO';
+  return 'CPP';
+}
 
-  if (!problem) {
-    const error = new Error('Problem not found');
-    error.statusCode = 404;
-    throw error;
+/**
+ * Safely maps judge verdicts to Postgres DB status constraints.
+ */
+function mapVerdictToDbStatus(verdict) {
+  const dbEnumVerdicts = [
+    'ACCEPTED',
+    'WRONG_ANSWER',
+    'RUNTIME_ERROR',
+    'COMPILATION_ERROR',
+    'TIME_LIMIT_EXCEEDED',
+    'PENDING',
+    'MEMORY_LIMIT_EXCEEDED',
+    'INTERNAL_ERROR'
+  ];
+  if (dbEnumVerdicts.includes(verdict)) {
+    return verdict;
+  }
+  // Fallback to RUNTIME_ERROR for OUTPUT_LIMIT_EXCEEDED
+  return 'RUNTIME_ERROR';
+}
+
+const submitUserCode = async ({ userId, problemId, language, code, runAll = false, options = {} }) => {
+  const traceId = options.traceId || `trace_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  
+  // 1. Initialize Pipeline Context
+  const context = {
+    submissionId: null,
+    userId,
+    problemId,
+    language,
+    code,
+    traceId,
+    state: 'PENDING',
+    problemMeta: null,
+    testcases: [],
+    assembledSource: '',
+    artifact: null,
+    testcaseResults: [],
+    finalVerdict: null,
+    scoreMetrics: null,
+    compileTimeMs: 0,
+    executionTimeMs: 0,
+    memoryKb: 0
+  };
+
+  const transitionTo = (newState) => {
+    const current = context.state;
+    if (ALLOWED_TRANSITIONS[current] && !ALLOWED_TRANSITIONS[current].includes(newState)) {
+      console.warn(`Invalid state transition requested: ${current} -> ${newState}`);
+    }
+    context.state = newState;
+    console.log(`[Submission: ${context.submissionId || 'Pending'}] [State: ${newState}]`);
+  };
+
+  const hooks = new PipelineHooks();
+  // Register basic log hooks
+  hooks.register('beforeCompile', (ctx) => console.log(`[Trace: ${ctx.traceId}] Compilation hook triggered`));
+  hooks.register('afterCompile', (ctx) => console.log(`[Trace: ${ctx.traceId}] Compilation finished hook triggered`));
+
+  let compileResult = null;
+  const backendId = options.backend || process.env.CODE_EXECUTION_BACKEND || 'local';
+  const backend = backendRegistry.getBackend(backendId);
+
+  try {
+    // 2. Load Problem specs & Testcases
+    context.problemMeta = await problemLoader.loadProblem(problemId);
+    context.testcases = await testcaseLoader.load(problemId);
+
+    // 3. Persist PENDING submission record to database
+    const dbLangName = normalizeDbLanguage(language);
+    const pendingSubmission = await prisma.submission.create({
+      data: {
+        userId,
+        problemId,
+        language: dbLangName,
+        code,
+        status: 'PENDING',
+        executionTime: 0
+      }
+    });
+
+    context.submissionId = pendingSubmission.id;
+
+    // 4. Assemble Code
+    transitionTo('ASSEMBLING');
+    context.assembledSource = assemblyEngine.assembleCode(language, code, context.problemMeta);
+
+    // 5. Compile Code (Only Once)
+    transitionTo('COMPILING');
+    await hooks.trigger('beforeCompile', context);
+    
+    const compileOptions = {
+      timeout: context.problemMeta.limits.timeout,
+      memoryLimitKb: context.problemMeta.limits.memoryLimitKb
+    };
+
+    compileResult = await backend.compile(context.assembledSource, language, compileOptions);
+    context.compileTimeMs = compileResult.compileTimeMs;
+    await hooks.trigger('afterCompile', context);
+
+    if (!compileResult.success) {
+      context.finalVerdict = 'COMPILATION_ERROR';
+      transitionTo('FAILED');
+    } else {
+      context.artifact = compileResult.artifact;
+
+      // 6. Run & Judge Testcases (Loop)
+      transitionTo('RUNNING');
+      await hooks.trigger('beforeExecution', context);
+
+      const strategy = judgeStrategyRegistry.getStrategy(context.problemMeta.judgeStrategy);
+      const earlyTerm = options.earlyTermination !== undefined ? options.earlyTermination : !runAll;
+
+      for (const testcase of context.testcases) {
+        // Execute testcase
+        const execOptions = {
+          timeout: context.problemMeta.limits.timeout,
+          memoryLimitKb: context.problemMeta.limits.memoryLimitKb
+        };
+
+        const runnerOut = await backend.execute(context.artifact, language, testcase.input, execOptions);
+        
+        transitionTo('JUDGING');
+        await hooks.trigger('beforeJudge', context);
+
+        const isPassed = strategy.judge(testcase.expectedOutput, runnerOut.stdout, context.problemMeta.metadata);
+        await hooks.trigger('afterJudge', context);
+
+        const tcStatus = runnerOut.limitError
+          ? resultCollectorStatus(runnerOut.limitError)
+          : (runnerOut.exitInfo.code !== 0 && runnerOut.exitInfo.code !== null ? 'RUNTIME_ERROR' : 'SUCCESS');
+
+        const judgeResult = {
+          testcaseId: testcase.id,
+          isPassed: isPassed && tcStatus === 'SUCCESS',
+          status: tcStatus === 'SUCCESS' && !isPassed ? 'WRONG_ANSWER' : tcStatus,
+          executionTimeMs: runnerOut.metrics.executionTimeMs || 0,
+          memoryKb: runnerOut.metrics.memoryKb || 0
+        };
+
+        context.testcaseResults.push(judgeResult);
+        context.executionTimeMs += judgeResult.executionTimeMs;
+        context.memoryKb = Math.max(context.memoryKb, judgeResult.memoryKb);
+
+        // Transition back to running state if loop continues
+        transitionTo('RUNNING');
+
+        // Early termination on failure
+        if (earlyTerm && !judgeResult.isPassed) {
+          break;
+        }
+      }
+
+      await hooks.trigger('afterExecution', context);
+      
+      // Cleanup executable artifact
+      try {
+        await backend.cleanup(context.artifact);
+      } catch (e) {
+        console.warn(`Tear down failed for artifact:`, e.message);
+      }
+
+      // 7. Calculate final score and verdict statuses
+      context.finalVerdict = verdictService.getFinalVerdict(context.testcaseResults, true);
+      context.scoreMetrics = scoreCalculator.calculateScore(context.testcaseResults, {
+        scoringModel: options.scoringModel || 'PARTIAL'
+      });
+
+      transitionTo('COMPLETED');
+    }
+
+  } catch (err) {
+    console.error('Submission pipeline execution crashed:', err);
+    context.finalVerdict = 'INTERNAL_ERROR';
+    transitionTo('FAILED');
+    
+    // Attempt artifact cleanup if initialized
+    if (context.artifact) {
+      try {
+        await backend.cleanup(context.artifact);
+      } catch (_) {}
+    }
   }
 
-  if (problem.testCases.length === 0) {
-    const error = new Error('This problem does not have any test cases configured.');
-    error.statusCode = 400;
-    throw error;
+  // 8. Format final response
+  if (!context.scoreMetrics) {
+    context.scoreMetrics = scoreCalculator.calculateScore(context.testcaseResults, {
+      scoringModel: options.scoringModel || 'PARTIAL'
+    });
   }
+  
+  const finalResultPayload = resultFormatter.formatResult(context);
 
-  // 2. Create pending submission in DB first
-  const pendingSubmission = await prisma.submission.create({
+  // 9. Persist final results to DB
+  await hooks.trigger('beforePersist', context);
+  const dbStatus = mapVerdictToDbStatus(finalResultPayload.verdict);
+
+  const updatedSubmission = await prisma.submission.update({
+    where: { id: context.submissionId },
     data: {
-      userId,
-      problemId,
-      language: (() => {
-        const lang = language.toUpperCase();
-        if (lang === 'JAVA') return 'JAVA';
-        if (lang === 'PYTHON') return 'PYTHON';
-        if (lang === 'JAVASCRIPT') return 'JAVASCRIPT';
-        if (lang === 'TYPESCRIPT') return 'JAVASCRIPT'; // Store as JS in DB
-        if (lang === 'GO') return 'GO';
-        if (lang === 'C') return 'CPP';      // Store as CPP in DB
-        if (lang === 'CSHARP') return 'CPP';
-        if (lang === 'KOTLIN') return 'JAVA';
-        if (lang === 'SCALA') return 'JAVA';
-        if (lang === 'SWIFT') return 'CPP';
-        if (lang === 'RUST') return 'CPP';
-        if (lang === 'RUBY') return 'PYTHON';
-        if (lang === 'PHP') return 'PYTHON';
-        if (lang === 'DART') return 'JAVASCRIPT';
-        if (lang === 'ELIXIR') return 'PYTHON';
-        if (lang === 'ERLANG') return 'PYTHON';
-        if (lang === 'RACKET') return 'PYTHON';
-        return 'CPP';
-      })(),
-      code,
-      status: 'PENDING',
-      executionTime: 0,
+      status: dbStatus,
+      executionTime: finalResultPayload.executionTimeMs
     },
+    include: {
+      user: { select: { id: true, username: true } },
+      problem: { select: { id: true, title: true, slug: true } }
+    }
   });
 
-  let finalSubmission;
+  // Attach raw judgeResult block to database submission object for controller mapping
+  updatedSubmission.judgeResult = {
+    verdict: finalResultPayload.verdict,
+    failedTestCase: context.testcaseResults.find(r => !r.isPassed)?.testcaseId || null,
+    totalTestCases: context.testcases.length,
+    passedTestCases: finalResultPayload.passed,
+    executionTimeMs: finalResultPayload.executionTimeMs,
+    memoryKb: finalResultPayload.memoryKb,
+    stderr: compileResult && !compileResult.success ? compileResult.stderr : ''
+  };
 
+  await hooks.trigger('afterPersist', context);
+
+  // 10. Broadcast socket notifications and updates
   try {
-    // Determine if this is a schema-driven problem
-    let paramsList = [];
-    if (problem.parameters) {
-      paramsList = typeof problem.parameters === 'string' 
-        ? JSON.parse(problem.parameters) 
-        : problem.parameters;
-    }
-
-    let executableCode = code;
-    if (Array.isArray(paramsList) && paramsList.length > 0) {
-      const { generateDriverCode } = require('./boilerplateService');
-      executableCode = generateDriverCode(language, problem.functionName || 'solve', paramsList, problem.returnType || 'INT', code);
-    }
-
-    // 3. Execute code in sandbox
-    const result = await judgeQueuedSubmission(language, executableCode, problem, problem.testCases, { runAll });
-
-    // 4. Update submission with execution status
-    finalSubmission = await prisma.submission.update({
-      where: { id: pendingSubmission.id },
-      data: {
-        status: result.verdict,
-        executionTime: result.executionTimeMs,
-      },
-      include: {
-        user: { select: { id: true, username: true } },
-        problem: { select: { id: true, title: true, slug: true } }
-      }
-    });
-
-    // Attach raw verdict/results for controller mapping
-    finalSubmission.judgeResult = result;
-
-  } catch (error) {
-    // If execution crashes unexpectedly, mark submission as RUNTIME_ERROR
-    console.error('Submission execution failed:', error);
-    finalSubmission = await prisma.submission.update({
-      where: { id: pendingSubmission.id },
-      data: {
-        status: 'RUNTIME_ERROR',
-        executionTime: 0,
-      },
-      include: {
-        user: { select: { id: true, username: true } },
-        problem: { select: { id: true, title: true, slug: true } }
-      }
-    });
+    broadcastLiveSubmission(updatedSubmission);
+  } catch (e) {
+    console.warn('Socket broadcast failed:', e.message);
   }
 
-  // 5. Broadcast live submission update to admins
-  if (finalSubmission) {
-    broadcastLiveSubmission(finalSubmission);
+  // 11. Handle Leaderboard / Contest updates
+  try {
+    await updateContestLeaderboard(userId, problemId);
+  } catch (e) {
+    console.warn('Leaderboard update failed:', e.message);
   }
 
-  // 6. Handle active contest score calculation and WebSocket leaderboard broadcasts
-  try {
-    const now = new Date();
-    const activeContests = await prisma.contest.findMany({
+  return updatedSubmission;
+};
+
+/**
+ * Standardizes result statuses mapping.
+ */
+function resultCollectorStatus(limitError) {
+  if (limitError.name === 'OutputLimitExceededError') return 'OUTPUT_LIMIT_EXCEEDED';
+  if (limitError.name === 'TimeLimitExceededError') return 'TIME_LIMIT_EXCEEDED';
+  if (limitError.name === 'MemoryLimitExceededError') return 'MEMORY_LIMIT_EXCEEDED';
+  return 'INTERNAL_ERROR';
+}
+
+/**
+ * Keeps full backwards compatibility with active contest updates.
+ */
+async function updateContestLeaderboard(userId, problemId) {
+  const now = new Date();
+  const activeContests = await prisma.contest.findMany({
+    where: {
+      contestProblems: {
+        some: { problemId: problemId }
+      },
+      startTime: { lte: now },
+      endTime: { gte: now }
+    },
+    include: {
+      contestProblems: true
+    }
+  });
+
+  for (const contest of activeContests) {
+    const participation = await prisma.contestParticipation.findUnique({
       where: {
-        contestProblems: {
-          some: { problemId: problemId }
-        },
-        startTime: { lte: now },
-        endTime: { gte: now }
-      },
-      include: {
-        contestProblems: true
+        userId_contestId: { userId, contestId: contest.id }
       }
     });
 
-    for (const contest of activeContests) {
-      const participation = await prisma.contestParticipation.findUnique({
+    if (participation) {
+      const problemIds = contest.contestProblems.map(cp => cp.problemId);
+
+      const userAcceptedSubmissions = await prisma.submission.findMany({
         where: {
-          userId_contestId: { userId, contestId: contest.id }
+          userId,
+          problemId: { in: problemIds },
+          status: 'ACCEPTED',
+          createdAt: {
+            gte: contest.startTime,
+            lte: contest.endTime
+          }
         }
       });
 
-      if (participation) {
-        const problemIds = contest.contestProblems.map(cp => cp.problemId);
+      const solvedProblemIds = new Set(userAcceptedSubmissions.map(s => s.problemId));
+      let totalScore = 0;
+      solvedProblemIds.forEach(pId => {
+        const cp = contest.contestProblems.find(item => item.problemId === pId);
+        totalScore += cp ? cp.points : 100;
+      });
 
-        // Fetch all accepted submissions for this user during this contest window
-        const userAcceptedSubmissions = await prisma.submission.findMany({
-          where: {
-            userId,
-            problemId: { in: problemIds },
-            status: 'ACCEPTED',
-            createdAt: {
-              gte: contest.startTime,
-              lte: contest.endTime
-            }
-          }
-        });
+      await prisma.contestParticipation.update({
+        where: { id: participation.id },
+        data: { score: totalScore }
+      });
 
-        // Calculate points based on unique solved problems
-        const solvedProblemIds = new Set(userAcceptedSubmissions.map(s => s.problemId));
-        let totalScore = 0;
-        solvedProblemIds.forEach(pId => {
-          const cp = contest.contestProblems.find(item => item.problemId === pId);
-          totalScore += cp ? cp.points : 100;
-        });
-
-        // Update scores in ContestParticipation
-        await prisma.contestParticipation.update({
-          where: { id: participation.id },
-          data: { score: totalScore }
-        });
-
-        // Trigger real-time updates for contest leaderboard and participants
-        await broadcastLeaderboardUpdate(contest.id);
-      }
+      await broadcastLeaderboardUpdate(contest.id);
     }
-  } catch (err) {
-    console.error('Failed to update contest scores or broadcast leaderboard updates:', err);
   }
-
-  return finalSubmission;
-};
+}
 
 module.exports = {
-  submitUserCode,
+  submitUserCode
 };

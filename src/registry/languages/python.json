@@ -1,0 +1,7 @@
+{
+  "language": "python",
+  "extension": "py",
+  "compileCmd": null,
+  "runCmd": "python3 {srcPath}",
+  "needsCompile": false
+}

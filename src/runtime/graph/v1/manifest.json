@@ -1,0 +1,9 @@
+{
+  "name": "graph",
+  "version": "v1",
+  "files": {
+    "cpp": "cpp/graph.hpp",
+    "python": "python/graph.py",
+    "javascript": "javascript/graph.js"
+  }
+}

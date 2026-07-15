@@ -1,0 +1,9 @@
+{
+  "id": "special",
+  "version": "1.0",
+  "supports": [
+    "FUNCTIONAL",
+    "SPEC_JUDGE"
+  ],
+  "description": "Custom programming validator execution logic"
+}

@@ -23,13 +23,18 @@ const submitSolution = async (req, res, next) => {
 
     const userId = req.user.id; // From protect middleware
 
-    // Run execution and store result
+    // Run execution through pipeline and store result
     const submissionResult = await submitUserCode({
       userId,
       problemId: pid,
       language,
       code,
-      runAll: true,
+      runAll: req.body.runAll !== undefined ? !!req.body.runAll : true,
+      options: {
+        earlyTermination: req.body.earlyTermination !== undefined ? !!req.body.earlyTermination : !(req.body.runAll),
+        scoringModel: req.body.scoringModel || 'PARTIAL',
+        backend: req.body.backend || process.env.CODE_EXECUTION_BACKEND || 'local'
+      }
     });
 
     res.status(201).json({
@@ -139,7 +144,6 @@ const getSingleSubmission = async (req, res, next) => {
       });
     }
 
-    // Only the author or an admin should see the source code (optional privacy rule, let's keep it visible or private based on preference. Let's allow public display or restrict it. Usually CP platforms allow public view unless private. Let's let it be readable but keep safety).
     res.status(200).json({
       success: true,
       submission,
@@ -236,16 +240,20 @@ const submitSolutionDirect = async (req, res, next) => {
       });
     }
 
-    // Run execution through the queue and persist
+    // Run execution through pipeline and persist
     const submission = await submitUserCode({
       userId,
       problemId: problem.id,
       language,
       code,
       runAll: !!req.body.runAll,
+      options: {
+        earlyTermination: req.body.earlyTermination !== undefined ? !!req.body.earlyTermination : !req.body.runAll,
+        scoringModel: req.body.scoringModel || 'PARTIAL',
+        backend: req.body.backend || process.env.CODE_EXECUTION_BACKEND || 'local'
+      }
     });
 
-    // Check configuration and construct output verdict response mapping
     const debugMode = process.env.DEBUG === 'true' || req.query.debug === 'true' || process.env.NODE_ENV !== 'production';
     const result = submission.judgeResult || {
       verdict: submission.status,

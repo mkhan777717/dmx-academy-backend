@@ -1,0 +1,31 @@
+{
+  "name": "BOOLEAN",
+  "category": "primitive",
+  "languages": {
+    "cpp": {
+      "typeName": "bool",
+      "deserialize": "({varName} == \"true\" || {varName} == \"1\")",
+      "serialize": "({varName} ? \"true\" : \"false\")"
+    },
+    "python": {
+      "typeName": "bool",
+      "deserialize": "({varName}.strip().lower() in ('true', '1'))",
+      "serialize": "str({varName}).lower()"
+    },
+    "javascript": {
+      "typeName": "boolean",
+      "deserialize": "({varName}.trim().toLowerCase() === \"true\" || {varName}.trim() === \"1\")",
+      "serialize": "String({varName})"
+    },
+    "java": {
+      "typeName": "boolean",
+      "deserialize": "Boolean.parseBoolean({varName}.trim())",
+      "serialize": "String.valueOf({varName})"
+    },
+    "go": {
+      "typeName": "bool",
+      "deserialize": "func() bool { val, _ := strconv.ParseBool(strings.TrimSpace({varName})); return val }()",
+      "serialize": "strconv.FormatBool({varName})"
+    }
+  }
+}
