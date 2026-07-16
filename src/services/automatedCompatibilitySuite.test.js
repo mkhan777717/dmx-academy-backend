@@ -564,3 +564,7 @@ runCompatibilitySuite().catch(e => {
   console.error('Fatal Matrix Failure:', e);
   process.exit(1);
 });
+
+if (typeof module !== 'undefined') {
+  module.exports = { solutions };
+}
