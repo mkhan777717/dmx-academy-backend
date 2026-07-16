@@ -204,6 +204,8 @@ class AssemblyEngine {
         `if not raw_input:\n        ` +
         `return\n    ` +
         `lines = raw_input.splitlines()\n    ` +
+        `if len(lines) < ${problemMeta.parameters.length}:\n        ` +
+        `    lines = raw_input.split()\n    ` +
         `try:\n        ` +
         `    ${executionParts.join('\n            ')}\n        ` +
         `    ${printParts.join('\n            ')}\n    ` +
@@ -217,7 +219,10 @@ class AssemblyEngine {
         `const fs = require('fs');\n    ` +
         `const rawInput = fs.readFileSync(0, 'utf-8').trim();\n    ` +
         `if (!rawInput) return;\n    ` +
-        `const lines = rawInput.split(/\\r?\\n/);\n    ` +
+        `let lines = rawInput.split(/\\r?\\n/);\n    ` +
+        `if (lines.length < ${problemMeta.parameters.length}) {\n    ` +
+        `    lines = rawInput.split(/\\s+/);\n    ` +
+        `}\n    ` +
         `try {\n        ` +
         `  ${executionParts.join('\n        ')}\n        ` +
         `  ${printParts.join('\n        ')}\n    ` +
