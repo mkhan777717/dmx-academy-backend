@@ -20,5 +20,14 @@
   "runtimeLibraries": ["tree", "list", "graph"],
   "docker": {
     "image": "python:3.10-slim"
-  }
+  },
+  "dbLanguage": "PYTHON",
+  "imports": "import sys\nimport json\nfrom typing import Optional, List",
+  "inputVarTemplate": "lines[{idx}].strip()",
+  "parameterReadTemplate": "if len(lines) > {idx}:\n    {paramName} = {deserialize}",
+  "executionCallTemplate": "solver = Solution()\nresult = solver.{functionName}({paramNames})",
+  "executionCallVoidTemplate": "solver = Solution()\nsolver.{functionName}({paramNames})",
+  "printTemplate": "print({serializeExpr})",
+  "mainBodyTemplate": "def main():\n    import sys\n    raw_input = sys.stdin.read().strip()\n    if not raw_input:\n        return\n    lines = raw_input.splitlines()\n    if len(lines) < {parametersLength}:\n        lines = raw_input.split()\n    try:\n        {executionParts}\n        {printParts}\n    except Exception as e:\n      sys.stderr.write(str(e))\n      sys.exit(1)\n\nif __name__ == '__main__':\n    main()",
+  "runtimeLibraryCleanupRegexes": []
 }

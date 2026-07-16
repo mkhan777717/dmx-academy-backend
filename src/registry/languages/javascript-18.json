@@ -20,5 +20,14 @@
   "runtimeLibraries": ["tree", "list", "graph"],
   "docker": {
     "image": "node:18-slim"
-  }
+  },
+  "dbLanguage": "JAVASCRIPT",
+  "imports": "const fs = require('fs');",
+  "inputVarTemplate": "lines[{idx}].trim()",
+  "parameterReadTemplate": "let {paramName};\n    if (lines.length > {idx}) {\n        {paramName} = {deserialize};\n    }",
+  "executionCallTemplate": "const result = {functionName}({paramNames});",
+  "executionCallVoidTemplate": "{functionName}({paramNames});",
+  "printTemplate": "console.log({serializeExpr});",
+  "mainBodyTemplate": "function main() {\n    const fs = require('fs');\n    const rawInput = fs.readFileSync(0, 'utf-8').trim();\n    if (!rawInput) return;\n    let lines = rawInput.split(/\\r?\\n/);\n    if (lines.length < {parametersLength}) {\n        lines = rawInput.split(/\\s+/);\n    }\n    try {\n        {executionParts}\n        {printParts}\n    } catch (e) {\n        console.error(e);\n        process.exit(1);\n    }\n}\nmain();",
+  "runtimeLibraryCleanupRegexes": []
 }
