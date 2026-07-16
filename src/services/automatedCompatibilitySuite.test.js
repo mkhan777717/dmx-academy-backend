@@ -220,8 +220,8 @@ const solutions = {
       returnType: 'STRING',
       functionName: 'intToRoman'
     },
-    inputs: ['11234\n'],
-    expected: ['MMMMMMMMMMMCCXXXIV\n'],
+    inputs: ['1994\n'],
+    expected: ['MCMXCIV\n'],
     code: {
       cpp: `class Solution { public: string intToRoman(int num) { string M[] = {"", "M", "MM", "MMM"}; string C[] = {"", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"}; string X[] = {"", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"}; string I[] = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"}; string res = ""; while(num >= 1000) { res += "M"; num -= 1000; } return res + C[(num%1000)/100] + X[(num%100)/10] + I[num%10]; } };`,
       python: `class Solution:\n    def intToRoman(self, num: int) -> str:\n        C = ["", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"]\n        X = ["", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"]\n        I = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]\n        res = ""\n        while num >= 1000: res += "M"; num -= 1000\n        return res + C[(num%1000)//100] + X[(num%100)//10] + I[num%10]`,
