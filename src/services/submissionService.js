@@ -63,9 +63,11 @@ function normalizeDbLanguage(language) {
       return config.dbLanguage;
     }
   } catch (e) {
-    // Ignore and fallback to CPP
+    // H-5: Don't silently map unknown languages to CPP
+    console.warn(`[normalizeDbLanguage] Unknown language '${language}', storing raw uppercase.`);
   }
-  return 'CPP';
+  // Return the language uppercased as a best-effort rather than lying and saying CPP
+  return language.toUpperCase();
 }
 
 /**
@@ -80,12 +82,13 @@ function mapVerdictToDbStatus(verdict) {
     'TIME_LIMIT_EXCEEDED',
     'PENDING',
     'MEMORY_LIMIT_EXCEEDED',
+    'OUTPUT_LIMIT_EXCEEDED', // H-6: Now mapped correctly
     'INTERNAL_ERROR'
   ];
   if (dbEnumVerdicts.includes(verdict)) {
     return verdict;
   }
-  // Fallback to RUNTIME_ERROR for OUTPUT_LIMIT_EXCEEDED
+  // Safe fallback for any unmapped future statuses
   return 'RUNTIME_ERROR';
 }
 
