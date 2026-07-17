@@ -1035,36 +1035,6 @@ const requestInstituteAccess = async (req, res, next) => {
         success: false,
         message: 'Failed to send partnership request email. Please check your SMTP configuration.',
       });
-<<<<<<< Updated upstream
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Partnership request sent successfully.',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
-module.exports = {
-  register,
-  login,
-  getProfile,
-  getAdminStats,
-  addInstituteAdmin,
-  getInstituteAdmins,
-  deleteInstituteAdmin,
-  updateInstituteAdmin,
-  forgotPassword,
-  resetPassword,
-  getStudentStats,
-  googleLogin,
-  requestInstituteAccess,
-  updateProfile,
-};
-=======
     }
 
     res.status(200).json({
@@ -1117,6 +1087,7 @@ module.exports = {
   register,
   login,
   getProfile,
+  updateProfile,
   getAdminStats,
   addInstituteAdmin,
   getInstituteAdmins,
@@ -1129,4 +1100,3 @@ module.exports = {
   requestInstituteAccess,
   requestProAccess,
 };
->>>>>>> Stashed changes
