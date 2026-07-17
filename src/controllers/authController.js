@@ -1035,6 +1035,7 @@ const requestInstituteAccess = async (req, res, next) => {
         success: false,
         message: 'Failed to send partnership request email. Please check your SMTP configuration.',
       });
+<<<<<<< Updated upstream
     }
 
     res.status(200).json({
@@ -1063,3 +1064,69 @@ module.exports = {
   requestInstituteAccess,
   updateProfile,
 };
+=======
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Partnership request submitted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Handle new Pro early access requests
+ */
+const requestProAccess = async (req, res, next) => {
+  try {
+    const { name, email, phone, description } = req.body;
+    if (!name || !email || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and mobile number are required fields.',
+      });
+    }
+
+    const { sendProEarlyAccessEmail } = require('../services/emailService');
+    const sent = await sendProEarlyAccessEmail({
+      name,
+      email,
+      phone,
+      description,
+    });
+
+    if (!sent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send early access request email. Please check your SMTP configuration.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Early access request submitted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  getProfile,
+  getAdminStats,
+  addInstituteAdmin,
+  getInstituteAdmins,
+  deleteInstituteAdmin,
+  updateInstituteAdmin,
+  forgotPassword,
+  resetPassword,
+  getStudentStats,
+  googleLogin,
+  requestInstituteAccess,
+  requestProAccess,
+};
+>>>>>>> Stashed changes
