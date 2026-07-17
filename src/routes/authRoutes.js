@@ -1,5 +1,9 @@
 const express = require('express');
+<<<<<<< Updated upstream
 const { register, login, getProfile, updateProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess } = require('../controllers/authController');
+=======
+const { register, login, getProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess, requestProAccess } = require('../controllers/authController');
+>>>>>>> Stashed changes
 const { protect, restrictTo } = require('../middleware/authMiddleware');
 const { authLimiter } = require('../middleware/rateLimiter');
 
@@ -10,6 +14,7 @@ router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
 router.post('/google', authLimiter, googleLogin);
 router.post('/request-institute-access', authLimiter, requestInstituteAccess);
+router.post('/request-pro-access', authLimiter, requestProAccess);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password/:token', authLimiter, resetPassword);
 
