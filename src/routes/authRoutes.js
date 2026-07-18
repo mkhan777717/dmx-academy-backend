@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getProfile, updateProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess, requestProAccess } = require('../controllers/authController');
+const { register, login, getProfile, updateProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess, requestProAccess, applyReferralCode } = require('../controllers/authController');
 const { protect, restrictTo } = require('../middleware/authMiddleware');
 const { authLimiter } = require('../middleware/rateLimiter');
 
@@ -17,6 +17,7 @@ router.post('/reset-password/:token', authLimiter, resetPassword);
 // Private/Protected routes
 router.get('/profile', protect, getProfile);
 router.patch('/profile', protect, updateProfile);
+router.post('/referral/apply', protect, applyReferralCode);
 router.get('/student/stats', protect, getStudentStats);
 router.get('/stats', protect, restrictTo('ADMIN'), getAdminStats);
 
