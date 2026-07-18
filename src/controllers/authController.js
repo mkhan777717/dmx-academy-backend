@@ -173,9 +173,23 @@ const login = async (req, res, next) => {
 const getProfile = async (req, res, next) => {
   try {
     // req.user is populated by protect middleware
+    let user = req.user;
+    if (!user.referralCode) {
+      const generatedCode = 'REF-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "User" SET "referralCode" = $1 WHERE id = $2`,
+          generatedCode, user.id
+        );
+        user.referralCode = generatedCode;
+      } catch (e) {
+        console.error('Error generating referral code on getProfile', e);
+      }
+    }
+
     res.status(200).json({
       success: true,
-      user: req.user,
+      user: user,
     });
   } catch (error) {
     next(error);
@@ -1083,7 +1097,78 @@ const requestProAccess = async (req, res, next) => {
   }
 };
 
+/**
+ * Apply Referral Code
+ */
+const applyReferralCode = async (req, res, next) => {
+  try {
+    const { referralCode } = req.body;
+    const userId = req.user.id;
+
+    if (!referralCode) {
+      return res.status(400).json({ success: false, message: 'Referral code is required.' });
+    }
+
+    // Find the user who owns this referral code
+    const referrer = await prisma.user.findUnique({
+      where: { referralCode: referralCode.toUpperCase() }
+    });
+
+    if (!referrer) {
+      return res.status(404).json({ success: false, message: 'Invalid referral code.' });
+    }
+
+    if (referrer.id === userId) {
+      return res.status(400).json({ success: false, message: 'You cannot use your own referral code.' });
+    }
+
+    // Check if current user already used a referral code
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (currentUser.referredById) {
+      return res.status(400).json({ success: false, message: 'You have already used a referral code.' });
+    }
+
+    // 7 days in milliseconds
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    const now = new Date();
+
+    // Extend referee premium
+    let currentPremium = currentUser.premiumUntil && new Date(currentUser.premiumUntil) > now ? new Date(currentUser.premiumUntil) : now;
+    const newPremiumUntil = new Date(currentPremium.getTime() + SEVEN_DAYS);
+
+    // Extend referrer premium
+    let referrerPremium = referrer.premiumUntil && new Date(referrer.premiumUntil) > now ? new Date(referrer.premiumUntil) : now;
+    const referrerNewPremiumUntil = new Date(referrerPremium.getTime() + SEVEN_DAYS);
+
+    // Transaction to update both users safely
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          referredById: referrer.id,
+          premiumUntil: newPremiumUntil
+        }
+      }),
+      prisma.user.update({
+        where: { id: referrer.id },
+        data: {
+          premiumUntil: referrerNewPremiumUntil
+        }
+      })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Referral code applied successfully! You and your friend both earned 7 days of premium.',
+      premiumUntil: newPremiumUntil
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  applyReferralCode,
   register,
   login,
   getProfile,

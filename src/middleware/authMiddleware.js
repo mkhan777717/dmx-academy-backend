@@ -142,6 +142,7 @@ const protect = async (req, res, next) => {
     const rows = await prisma.$queryRaw`
       SELECT u.id, u.username, u.email, u.role, u."currentSessionId",
              u."fullName", u."avatarUrl", u."createdAt", u."instituteId",
+             u."referralCode", u."premiumUntil", u."referredById",
              i.name AS "instituteName"
       FROM "User" u
       LEFT JOIN "Institute" i ON i.id = u."instituteId"
