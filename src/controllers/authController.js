@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../prisma');
+const PaginationService = require('../services/paginationService');
+const paginationConfig = require('../config/pagination');
 const { registerSchema, loginSchema } = require('../utils/validators');
 const { invalidateSession } = require('../services/socketService');
 const { sendPasswordResetEmail, sendResetSuccessEmail } = require('../services/emailService');
@@ -301,6 +303,31 @@ const addInstituteAdmin = async (req, res, next) => {
 };
 
 /**
+ * Get all users (Super Admin only)
+ */
+const getAllUsers = async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can list all users.',
+      });
+    }
+
+    const result = await PaginationService.paginate({
+      model: prisma.user,
+      query: req.query,
+      config: paginationConfig.user,
+      ctx: { user: req.user },
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get all institute admins
  */
 const getInstituteAdmins = async (req, res, next) => {
@@ -313,23 +340,15 @@ const getInstituteAdmins = async (req, res, next) => {
       });
     }
 
-    const admins = await prisma.user.findMany({
+    const result = await PaginationService.paginate({
+      model: prisma.user,
+      query: req.query,
+      config: paginationConfig.user,
       where: { role: 'INSTITUTE_ADMIN' },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        institute: true,
-      },
-      orderBy: { createdAt: 'desc' },
+      ctx: { user: req.user },
     });
 
-    res.status(200).json({
-      success: true,
-      admins,
-    });
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }
@@ -960,6 +979,7 @@ module.exports = {
   getAdminStats,
   addInstituteAdmin,
   getInstituteAdmins,
+  getAllUsers,
   deleteInstituteAdmin,
   updateInstituteAdmin,
   forgotPassword,

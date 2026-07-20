@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess } = require('../controllers/authController');
+const { register, login, getProfile, getAdminStats, addInstituteAdmin, getInstituteAdmins, getAllUsers, deleteInstituteAdmin, updateInstituteAdmin, forgotPassword, resetPassword, getStudentStats, googleLogin, requestInstituteAccess } = require('../controllers/authController');
 const { protect, restrictTo } = require('../middleware/authMiddleware');
 const { authLimiter } = require('../middleware/rateLimiter');
 
@@ -17,6 +17,7 @@ router.post('/reset-password/:token', authLimiter, resetPassword);
 router.get('/profile', protect, getProfile);
 router.get('/student/stats', protect, getStudentStats);
 router.get('/stats', protect, restrictTo('ADMIN'), getAdminStats);
+router.get('/users', protect, restrictTo('ADMIN'), getAllUsers);
 
 // Institute Admin management (restricted to Super Admin only)
 router.post('/institute-admin', protect, restrictTo('ADMIN'), addInstituteAdmin);
