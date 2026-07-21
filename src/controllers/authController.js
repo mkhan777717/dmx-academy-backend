@@ -237,7 +237,7 @@ const updateProfile = async (req, res, next) => {
     const updateData = {};
     if (username) updateData.username = username;
     if (email) updateData.email = email;
-    
+
     if (password) {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password, salt);
@@ -760,7 +760,7 @@ const getStudentStats = async (req, res, next) => {
     const problems = await prisma.problem.findMany({
       select: { difficulty: true }
     });
-    
+
     let totalEasy = 0, totalMedium = 0, totalHard = 0;
     problems.forEach(p => {
       if (p.difficulty === 'EASY') totalEasy++;
@@ -778,7 +778,7 @@ const getStudentStats = async (req, res, next) => {
     // Count distinct problems solved by difficulty
     const solvedSet = new Set();
     let solvedEasy = 0, solvedMedium = 0, solvedHard = 0;
-    
+
     // Calculate language breakdown from accepted subs
     const languageStats = {};
 
@@ -794,7 +794,7 @@ const getStudentStats = async (req, res, next) => {
           solvedEasy++; // Fallback if problem is somehow missing
         }
       }
-      
+
       // Aggregate language
       if (sub.language) {
         languageStats[sub.language] = (languageStats[sub.language] || 0) + 1;
@@ -826,15 +826,15 @@ const getStudentStats = async (req, res, next) => {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       heatmapData[dateStr] = (heatmapData[dateStr] || 0) + 1;
     });
-    
+
     const activeDaysCount = Object.keys(heatmapData).length;
 
     // Calculate Streak (Max Streak & Current Streak)
     let maxStreak = 0;
     let currentStreak = 0;
-    
+
     const uniqueDates = Object.keys(heatmapData).sort((a, b) => new Date(b) - new Date(a)); // Descending
-    
+
     if (uniqueDates.length > 0) {
       const today = new Date();
       const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -849,7 +849,7 @@ const getStudentStats = async (req, res, next) => {
         const startDateStr = uniqueDates.includes(todayStr) ? todayStr : yesterdayStr;
         let curr = new Date(startDateStr);
         const dateSet = new Set(uniqueDates);
-        
+
         while (true) {
           const checkStr = formatDate(curr);
           if (dateSet.has(checkStr)) {
@@ -1010,7 +1010,7 @@ const googleLogin = async (req, res, next) => {
       // Deriving a unique username
       let baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       if (!baseUsername) baseUsername = 'user';
-      
+
       let username = baseUsername;
       let usernameExists = true;
       let suffix = 1;
