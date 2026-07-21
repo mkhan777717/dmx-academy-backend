@@ -38,6 +38,7 @@ model User {
   vivasCreated            Viva[]                   @relation("VivaCreator")
   createdArcadeQuestions  ArcadeQuestion[]         @relation("ArcadeQuestionCreator")
   resumes                 Resume[]
+  feedbacks               Feedback[]
   // ── Discussion relations ───────────────────────────────────────────────────
   discussions             Discussion[]             @relation("DiscussionAuthor")
   discussionComments      Comment[]                @relation("CommentAuthor")
@@ -935,4 +936,12 @@ model DiscussionSlugHistory {
   createdAt    DateTime   @default(now())
 
   @@index([slug])
+}
+
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  createdAt DateTime @default(now())
 }
