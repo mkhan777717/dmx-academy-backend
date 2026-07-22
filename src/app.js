@@ -25,6 +25,7 @@ const arcadeRoutes = require('./routes/arcadeRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const syllabusRoutes = require('./routes/syllabusRoutes');
 const discussionRoutes = require('./routes/discussionRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 
 const app = express();
@@ -71,6 +72,7 @@ app.use('/api/arcade', arcadeRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/syllabus', syllabusRoutes);
 app.use('/api/discuss', discussionRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 
 // Fallback for undefined routes
