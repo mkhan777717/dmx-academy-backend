@@ -26,6 +26,8 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const syllabusRoutes = require('./routes/syllabusRoutes');
 const discussionRoutes = require('./routes/discussionRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const examRoutes = require('./modules/exam/routes/v1/examRoutes');
+const attemptRoutes = require('./modules/exam/routes/v1/attemptRoutes');
 
 
 const app = express();
@@ -40,7 +42,7 @@ app.use(helmet({
 app.use(cors({
   origin: '*', // Customize to Next.js URL in production
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-bypass-auth', 'x-bypass-role', 'x-bypass-userid']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-bypass-auth', 'x-bypass-role', 'x-bypass-userid', 'x-idempotency-key', 'X-Idempotency-Key']
 }));
 
 // Request Parsers & Limiters
@@ -74,6 +76,8 @@ app.use('/api/resumes', resumeRoutes);
 app.use('/api/syllabus', syllabusRoutes);
 app.use('/api/discuss', discussionRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/v1/exams', examRoutes);
+app.use('/api/v1/attempts', attemptRoutes);
 
 
 // Fallback for undefined routes
@@ -163,6 +167,17 @@ server.listen(PORT, async () => {
   console.log(`  Listening on port: ${PORT}`);
   console.log(`  Health check: http://localhost:${PORT}/health`);
   console.log(`=================================`);
+  
+  // Start Coding Execution Worker
+  const codingWorker = require('./modules/exam/services/CodingWorker');
+  codingWorker.start();
+
+  // Start Scheduled Results Release Checker
+  const resultService = require('./modules/exam/services/ResultService');
+  setInterval(() => {
+    resultService.checkScheduledReleases();
+  }, 60000);
+
   await seedDefaultUsers();
   const { seedDefaultQuestionsIfNeeded } = require('./controllers/arcadeController');
   await seedDefaultQuestionsIfNeeded();
