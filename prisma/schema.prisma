@@ -56,6 +56,12 @@ model User {
   mentionsCreated         Mention[]                @relation("MentionCreator")
   discussionHistories     DiscussionHistory[]      @relation("HistoryEditor")
   notificationsSent       DiscussionNotification[] @relation("NotificationSender")
+  
+  // ── Daily Challenges ────────────────────────────────────────────────────────
+  dailyStreak             Int                      @default(0)
+  totalPoints             Int                      @default(0)
+  lastStreakDate          String?                  // YYYY-MM-DD
+  dailyChallengeAttempts  DailyChallengeAttempt[]
 }
 
 model Problem {
@@ -944,4 +950,32 @@ model Feedback {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   String   @db.Text
   createdAt DateTime @default(now())
+}
+
+// ── Daily Challenges ──────────────────────────────────────────────────────────
+
+model DailyChallenge {
+  id          Int      @id @default(autoincrement())
+  title       String
+  question    String   @db.Text
+  date        String?  @unique // Format: YYYY-MM-DD
+  points      Int      @default(10)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  attempts    DailyChallengeAttempt[]
+}
+
+model DailyChallengeAttempt {
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId     Int
+  challenge       DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  answer          String         @db.Text
+  pointsEarned    Int            @default(0)
+  createdAt       DateTime       @default(now())
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+  @@index([challengeId])
 }
