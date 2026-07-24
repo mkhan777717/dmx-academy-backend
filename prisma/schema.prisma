@@ -1573,3 +1573,50 @@ model ProctorAIEvent {
   @@index([userId])
   @@index([flag])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Job Assistance Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum JobType {
+  INTERNSHIP
+  FULL_TIME
+}
+
+enum JobAppStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SLOT_PENDING
+  SLOT_CONFIRMED
+  SLOT_REJECTED
+  COMPLETED
+}
+
+model JobApplication {
+  id               Int          @id @default(autoincrement())
+  userId           Int
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName         String
+  email            String
+  mobile           String
+  jobType          JobType
+  jobRole          String
+  resumeFileName   String
+  resumePath       String
+  status           JobAppStatus @default(PENDING)
+  currentStep      Int          @default(1)
+  preferredSlot    String?
+  confirmedSlot    String?
+  interviewerName  String?
+  interviewerEmail String?
+  mentorFeedback   String?
+  isForwarded      Boolean      @default(false)
+  adminNote        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
