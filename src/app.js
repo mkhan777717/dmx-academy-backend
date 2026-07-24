@@ -36,6 +36,9 @@ const proctorRoutes = require('./modules/exam/routes/v1/proctorRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the first proxy so rate limiters and req.ip work correctly behind load balancers/Cloudflare
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet({
   crossOriginEmbedderPolicy: false,

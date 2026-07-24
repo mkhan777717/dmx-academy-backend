@@ -103,7 +103,8 @@ function makeLimiter({ name, windowMs, max, skipSuccessfulRequests = false }) {
     handler: (req, res, next, options) => onLimitReached(req, res, { ...options, name }),
     keyGenerator: (req) => {
       // Key by IP; add user ID when available for finer-grained control
-      const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+      // With trust proxy enabled, req.ip will correctly reflect the client IP
+      const ip = req.ip || 'unknown';
       const uid = req.user?.id ?? 'anon';
       return `${ip}:${uid}`;
     },
