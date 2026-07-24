@@ -962,7 +962,6 @@ model Feedback {
   createdAt DateTime @default(now())
 }
 
-<<<<<<< HEAD
 // ── Daily Challenges ──────────────────────────────────────────────────────────
 
 model DailyChallenge {
@@ -989,7 +988,7 @@ model DailyChallengeAttempt {
   @@unique([userId, challengeId])
   @@index([userId])
   @@index([challengeId])
-=======
+}
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── EXAM MODULE ───────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1541,5 +1540,4 @@ model JobApplication {
 
   @@index([userId])
   @@index([status])
->>>>>>> cc21bb9a175639e3b0c697356af38a1c380ce5ca
 }
