@@ -66,3 +66,11 @@ src/uploads/*
 # Sandbox runtime workspace
 workspace/
 docs/
+
+# Python / Virtual Environments
+venv/
+*.pyc
+__pycache__/
+proctor/venv/
+proctor/uploads/
+

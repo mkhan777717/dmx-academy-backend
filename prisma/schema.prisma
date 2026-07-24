@@ -1028,6 +1028,24 @@ enum ProctorSeverity {
   HIGH
 }
 
+enum ProctorFlag {
+  NO_FACE
+  MULTIPLE_FACE
+  LOOK_AWAY_LONG
+  MOUTH_MOVEMENT
+  LOW_LIGHT
+  BLURRY_CAMERA
+  CAMERA_BLOCKED
+  TAB_HIDDEN
+  TAB_RESTORED
+  WINDOW_BLUR
+  WINDOW_FOCUS
+  NETWORK_LOST
+  CAMERA_DISCONNECTED
+  CAMERA_PERMISSION_DENIED
+  CONSENT_DECLINED
+}
+
 enum SectionType {
   MCQ
   DESCRIPTIVE
@@ -1314,24 +1332,25 @@ model ExamAccess {
 }
 
 model Attempt {
-  id            Int         @id @default(autoincrement())
-  examVersionId Int
-  examVersion   ExamVersion @relation(fields: [examVersionId], references: [id], onDelete: Cascade)
-  userId        Int
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  startTime DateTime      @default(now())
-  endTime   DateTime?
-  status    AttemptStatus @default(NOT_STARTED)
-  score     Float         @default(0.0)
-
-  answers       Answer[]
-  result        ExamResult?
-  proctorEvents ProctoringEvent[]
-  examEvents    ExamEvent[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              Int              @id @default(autoincrement())
+  examVersionId   Int
+  examVersion     ExamVersion      @relation(fields: [examVersionId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  startTime       DateTime         @default(now())
+  endTime         DateTime?
+  status          AttemptStatus    @default(NOT_STARTED)
+  score           Float            @default(0.0)
+  
+  answers         Answer[]
+  result          ExamResult?
+  proctorEvents   ProctoringEvent[]
+  proctorSessions ProctorSession[]
+  examEvents      ExamEvent[]
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([userId, examVersionId])
 }
@@ -1491,56 +1510,66 @@ model SectionQuestion {
   @@index([sectionId])
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── JOB ASSISTANCE MODULE ─────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Proctoring Models
+// ─────────────────────────────────────────────────────────────────────────────
 
-enum JobType {
-  INTERNSHIP
-  FULL_TIME
-}
+model ProctorSession {
+  id                String              @id @default(uuid())
+  attemptId         Int
+  attempt           Attempt             @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  userId            Int
+  status            String              @default("ACTIVE") // ACTIVE | ENDED | SUSPENDED
+  consentGiven      Boolean             @default(false)
+  reconnectCount    Int                 @default(0)
+  calibrationData   Json?
+  instituteConfig   Json?
+  configVersion     String              @default("v1")
+  riskScore         Float               @default(0)
+  startedAt         DateTime            @default(now())
+  endedAt           DateTime?
+  connections       ProctorConnection[]
+  aiEvents          ProctorAIEvent[]
 
-enum JobAppStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  SLOT_PENDING
-  SLOT_CONFIRMED
-  SLOT_REJECTED
-  NEEDS_IMPROVEMENT
-  COMPLETED
-}
-
-model JobApplication {
-  id               Int          @id @default(autoincrement())
-  userId           Int          @unique
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  username         String
-  fullName         String
-  email            String
-  mobile           String
-  jobType          JobType
-  jobRole          String
-  resumeFileName   String
-  resumePath       String
-  status           JobAppStatus @default(PENDING)
-  currentStep      Int          @default(1)
-  preferredSlot    String?
-  confirmedSlot    String?
-  interviewerName  String?
-  interviewerEmail String?
-  mentorFeedback   String?      @db.Text
-  feedbackRating   String?
-  isForwarded      Boolean      @default(false)
-  adminNote        String?      @db.Text
-  isReapplication  Boolean      @default(false)
-  reapplyCount     Int          @default(0)
-  previousNotes    Json         @default("[]")
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  rejectedAt       DateTime?
-  approvedAt       DateTime?
-
+  @@index([attemptId])
   @@index([userId])
-  @@index([status])
+}
+
+model ProctorConnection {
+  id                String         @id @default(uuid())
+  sessionId         String
+  session           ProctorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  traceId           String
+  connectionNumber  Int            @default(1)
+  connectedAt       DateTime       @default(now())
+  disconnectedAt    DateTime?
+  disconnectReason  String?
+  aiEvents          ProctorAIEvent[]
+
+  @@index([sessionId])
+}
+
+model ProctorAIEvent {
+  id              Int               @id @default(autoincrement())
+  sessionId       String
+  session         ProctorSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  connectionId    String?
+  connection      ProctorConnection? @relation(fields: [connectionId], references: [id])
+  userId          Int
+  flag            ProctorFlag
+  severity        ProctorSeverity   @default(LOW)
+  confidence      Float             @default(0)
+  detectorVersion String            @default("v1.0.0")
+  thumbnailPath   String?
+  metadata        Json?
+  traceId         String            @default("")
+  frameCount      Int               @default(1)
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationS       Float?
+  createdAt       DateTime          @default(now())
+
+  @@index([sessionId, startedAt])
+  @@index([userId])
+  @@index([flag])
 }
