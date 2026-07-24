@@ -66,12 +66,17 @@ model User {
   dailyChallengeAttempts  DailyChallengeAttempt[]
 
   // ── Exam relations ──────────────────────────────────────────────────────────
-  examsCreated         Exam[]           @relation("ExamCreator")
-  questionBanksCreated QuestionBank[]   @relation("QuestionBankCreator")
-  examAttempts         Attempt[]
-  gradedAnswers        ManualGrade[]    @relation("Grader")
-  examAccesses         ExamAccess[]
-  jobApplications      JobApplication[]
+  examsCreated            Exam[]                   @relation("ExamCreator")
+  questionBanksCreated    QuestionBank[]           @relation("QuestionBankCreator")
+  examAttempts            Attempt[]
+  gradedAnswers           ManualGrade[]            @relation("Grader")
+  examAccesses            ExamAccess[]
+  jobApplications         JobApplication[]
+
+  // ── Event relations ─────────────────────────────────────────────────────────
+  eventsOrganized         Event[]                @relation("EventOrganizer")
+  eventRegistrations      EventRegistration[]
+  clubMemberships         ClubMember[]
 }
 
 model Problem {
@@ -392,6 +397,10 @@ model Institute {
   allowedContest       Boolean          @default(true)
   allowedProblems      Boolean          @default(true)
   allowedGoLive        Boolean          @default(true)
+  allowedFeedbacks     Boolean          @default(true)
+  allowedExams         Boolean          @default(true)
+  allowedResume        Boolean          @default(true)
+  allowedCareerFair    Boolean          @default(true)
   wantsPremium         String           @default("")
   users                User[]
   batches              Batch[]
@@ -404,6 +413,11 @@ model Institute {
   discussions          Discussion[]
   exams                Exam[]
   questionBanks        QuestionBank[]
+
+  // ── Event relations ─────────────────────────────────────────────────────────
+  events               Event[]
+  clubs                Club[]
+
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 }
@@ -1626,4 +1640,130 @@ model JobApplication {
   updatedAt        DateTime     @default(now()) @updatedAt
 
   @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── EVENT MANAGEMENT & RSVP MODULE ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enum EventType {
+  INSTITUTE
+  GLOBAL
+}
+
+enum EventStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RSVPStatus {
+  GOING
+  INTERESTED
+  NOT_GOING
+  WAITLISTED
+  CANCELLED
+}
+
+model Club {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?       @db.Text
+  instituteId Int
+  institute   Institute     @relation(fields: [instituteId], references: [id])
+  members     ClubMember[]
+  events      Event[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ClubMember {
+  id        Int      @id @default(autoincrement())
+  clubId    Int
+  userId    Int
+  role      String   @default("MEMBER") // LEAD, MEMBER
+  club      Club     @relation(fields: [clubId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  joinedAt  DateTime @default(now())
+}
+
+model EventCategory {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  events Event[]
+}
+
+model Event {
+  id                   Int                @id @default(autoincrement())
+  title                String
+  description          String             @db.Text
+  bannerUrl            String?
+  type                 EventType          @default(INSTITUTE)
+  status               EventStatus        @default(UPCOMING)
+  venue                String?
+  isOnline             Boolean            @default(false)
+  meetingLink          String?
+  date                 DateTime
+  startTime            DateTime
+  endTime              DateTime
+  registrationDeadline DateTime?
+  maxCapacity          Int?
+  organizerId          Int
+  organizer            User               @relation("EventOrganizer", fields: [organizerId], references: [id])
+  instituteId          Int?
+  institute            Institute?         @relation(fields: [instituteId], references: [id])
+  clubId               Int?
+  club                 Club?              @relation(fields: [clubId], references: [id])
+  categoryId           Int?
+  category             EventCategory?     @relation(fields: [categoryId], references: [id])
+  tags                 String[]
+  requirements         String?            @db.Text
+  registrations        EventRegistration[]
+  speakers             EventSpeaker[]
+  schedules            EventSchedule[]
+  attachments          EventAttachment[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model EventRegistration {
+  id           Int         @id @default(autoincrement())
+  eventId      Int
+  userId       Int
+  status       RSVPStatus  @default(INTERESTED)
+  qrToken      String?     @unique @default(uuid())
+  registeredAt DateTime    @default(now())
+  event        Event       @relation(fields: [eventId], references: [id])
+  user         User        @relation(fields: [userId], references: [id])
+  
+  @@unique([eventId, userId])
+}
+
+model EventSpeaker {
+  id          Int     @id @default(autoincrement())
+  eventId     Int
+  name        String
+  designation String?
+  bio         String? @db.Text
+  avatarUrl   String?
+  event       Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model EventSchedule {
+  id          Int      @id @default(autoincrement())
+  eventId     Int
+  title       String
+  startTime   DateTime
+  endTime     DateTime
+  description String?
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model EventAttachment {
+  id       Int    @id @default(autoincrement())
+  eventId  Int
+  fileName String
+  fileUrl  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
