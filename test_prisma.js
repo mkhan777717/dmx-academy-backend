@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { try { const sessions = await prisma.liveSession.findMany({ where: { host: { OR: [ { role: 'ADMIN' }, { instituteId: null } ] } } }); console.log(sessions); } catch(e) { console.error(e.message); } finally { await prisma.$disconnect(); } } main();
