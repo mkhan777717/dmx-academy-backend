@@ -32,6 +32,7 @@ const examRoutes = require('./modules/exam/routes/v1/examRoutes');
 const attemptRoutes = require('./modules/exam/routes/v1/attemptRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const clubRoutes = require('./routes/clubRoutes');
+const proctorRoutes = require('./modules/exam/routes/v1/proctorRoutes');
 
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/api/v1/exams', examRoutes);
 app.use('/api/v1/attempts', attemptRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/clubs', clubRoutes);
+app.use('/api/v1/proctor', proctorRoutes);
 
 
 // Fallback for undefined routes
