@@ -56,6 +56,12 @@ model User {
   mentionsCreated         Mention[]                @relation("MentionCreator")
   discussionHistories     DiscussionHistory[]      @relation("HistoryEditor")
   notificationsSent       DiscussionNotification[] @relation("NotificationSender")
+  // ── Daily Challenges ────────────────────────────────────────────────────────
+  dailyStreak             Int                      @default(0)
+  totalPoints             Int                      @default(0)
+  lastStreakDate          String?                  // YYYY-MM-DD
+  dailyChallengeAttempts  DailyChallengeAttempt[]
+
   // ── Exam relations ──────────────────────────────────────────────────────────
   examsCreated            Exam[]                   @relation("ExamCreator")
   questionBanksCreated    QuestionBank[]           @relation("QuestionBankCreator")
@@ -956,6 +962,34 @@ model Feedback {
   createdAt DateTime @default(now())
 }
 
+<<<<<<< HEAD
+// ── Daily Challenges ──────────────────────────────────────────────────────────
+
+model DailyChallenge {
+  id          Int      @id @default(autoincrement())
+  title       String
+  question    String   @db.Text
+  date        String?  @unique // Format: YYYY-MM-DD
+  points      Int      @default(10)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  attempts    DailyChallengeAttempt[]
+}
+
+model DailyChallengeAttempt {
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId     Int
+  challenge       DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  answer          String         @db.Text
+  pointsEarned    Int            @default(0)
+  createdAt       DateTime       @default(now())
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+  @@index([challengeId])
+=======
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── EXAM MODULE ───────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1507,4 +1541,5 @@ model JobApplication {
 
   @@index([userId])
   @@index([status])
+>>>>>>> cc21bb9a175639e3b0c697356af38a1c380ce5ca
 }
